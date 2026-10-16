@@ -1,0 +1,26 @@
+
+name: C++ Build Check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install C++ compiler
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y g++
+
+      - name: Compile Bank Management System
+        run: |
+          g++ -std=c++17 -Wall -Wextra -pedantic main.cpp -o bank_management_system
