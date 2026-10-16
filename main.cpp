@@ -27,39 +27,45 @@ vector<Account> accounts;
 int nextAccountNumber = 100001;
 
 
+
 string readPIN() {
-    string pin;
-    char ch;
-
-    cout << "Enter a 4-digit PIN: ";
-
     while (true) {
+        string pin;
+        char ch;
+
+        cout << "Enter a 4-digit PIN: " << flush;
+
+        while (true) {
 #ifdef _WIN32
-        ch = _getch();
+            ch = _getch();
 #else
-        ch = cin.get();
+            ch = cin.get();
 #endif
 
-        if (ch == '\r' || ch == '\n') {
-            break;
-        }
+            if (ch == '\r' || ch == '\n') {
+                if (pin.length() == 4) {
+                    cout << '\n';
+                    return pin;
+                }
 
-        if (ch == '\b' || ch == 127) {
-            if (!pin.empty()) {
-                pin.pop_back();
-                cout << "\b \b";
+                cout << "\nPIN must contain exactly 4 digits.\n";
+                break;
             }
-            continue;
-        }
 
-        if (ch >= '0' && ch <= '9' && pin.length() < 4) {
-            pin += ch;
-            cout << '*';
+            if (ch == '\b' || ch == 127) {
+                if (!pin.empty()) {
+                    pin.pop_back();
+                    cout << "\b \b";
+                }
+                continue;
+            }
+
+            if (ch >= '0' && ch <= '9' && pin.length() < 4) {
+                pin += ch;
+                cout << '*';
+            }
         }
     }
-
-    cout << '\n';
-    return pin;
 }
 
 
