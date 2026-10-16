@@ -1,0 +1,15 @@
+# Compiled executables and object files
+*.exe
+*.o
+*.out
+
+# Runtime bank data
+accounts.txt
+transactions.txt
+audit.log
+
+# IDE and operating system files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
