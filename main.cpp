@@ -11,6 +11,7 @@
 #include <termios.h>
 #include <unistd.h>
 #endif
+#include <cctype>
 
 using namespace std;
 
@@ -80,8 +81,17 @@ void createAccount() {
     cout << "\nEnter customer name: ";
     getline(cin, account.name);
 
-    if (account.name.empty()) {
-        cout << "Name cannot be empty.\n";
+    bool hasNonWhitespace = false;
+
+    for (char ch : account.name) {
+        if (!isspace(static_cast<unsigned char>(ch))) {
+            hasNonWhitespace = true;
+            break;
+        }
+    }
+
+    if (!hasNonWhitespace) {
+        cout << "Name cannot be empty or spaces only.\n";
         return;
     }
 
