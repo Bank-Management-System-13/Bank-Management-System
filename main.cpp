@@ -1,197 +1,53 @@
 
 #include <iostream>
+#include <fstream>
+#include <sstream>
 #include <string>
-#include <limits>
 #include <vector>
 #include <iomanip>
-#include <sstream>
-#include <fstream>
+#include <limits>
 #include <ctime>
 #include <cctype>
 #include <cmath>
 
-#ifdef _WIN32
-#include <conio.h>
-#else
-#include <termios.h>
-#include <unistd.h>
-#endif
-
 using namespace std;
-
-// Account structure
-struct Account {
-    string accountNumber;
-    string name;
-    string pin;
-    bool locked = false;
-    int failedAttempts = 0;
-    double balance = 0.0;
-};
-
-vector<Account> accounts;
-int nextAccountNumber = 100001;
 
 const string ACCOUNT_FILE = "accounts.txt";
 const string TRANSACTION_FILE = "transactions.txt";
 
-// Save accounts to persistent storage
-bool saveAccounts() {
-    ofstream file(ACCOUNT_FILE);
+struct Account {
+    int accountNumber;
+    string name;
+    string pin;
+    bool locked;
+    int failedAttempts;
+    double balance;
+};
 
-    if (!file) {
-        cout << "Error: Could not save accounts.\n";
-        return false;
-    }
+vector<Account> accounts;
 
-    file << fixed << setprecision(2);
+// Function declarations
+bool validPIN(const string& pin);
+void loadAccounts();
+void saveAccounts();
+void createAccount();
+void customerLogin();
+void customerMenu(int index);
+void depositMoney(int index);
+void withdrawMoney(int index);
+void showTransactionHistory(int accountNumber);
+void recordTransaction(int accountNumber, string type,
+                       double amount, double balance);
+string currentDateTime();
 
-    for (const Account& account : accounts) {
-        file << account.accountNumber << '|'
-             << account.name << '|'
-             << account.pin << '|'
-             << account.balance << '|'
-             << account.locked << '|'
-             << account.failedAttempts << '\n';
-    }
-
-    if (!file) {
-        cout << "Error writing account data.\n";
-        return false;
-    }
-
-    return true;
-}
-
-// Load previously saved accounts
-void loadAccounts() {
-    ifstream file(ACCOUNT_FILE);
-
-    if (!file) {
-        cout << "No previous account data found. Starting fresh.\n";
-        return;
-    }
-
-    accounts.clear();
-
-    string line;
-    int highestAccountNumber = 100000;
-
-    while (getline(file, line)) {
-        stringstream ss(line);
-        Account account;
-
-        string balanceText;
-        string lockedText;
-        string attemptsText;
-
-        if (!getline(ss, account.accountNumber, '|') ||
-            !getline(ss, account.name, '|') ||
-            !getline(ss, account.pin, '|') ||
-            !getline(ss, balanceText, '|') ||
-            !getline(ss, lockedText, '|') ||
-            !getline(ss, attemptsText)) {
-            cout << "Warning: Skipping invalid account record.\n";
-            continue;
-        }
-
-        try {
-            account.balance = stod(balanceText);
-            account.locked = (lockedText == "1");
-            account.failedAttempts = stoi(attemptsText);
-
-            int number = stoi(account.accountNumber);
-
-            if (!validPIN(account.pin) ||
-                number < 100001 ||
-                !isfinite(account.balance) ||
-                account.balance < 0 ||
-                account.failedAttempts < 0 ||
-                (lockedText != "0" && lockedText != "1")) {
-                cout << "Warning: Skipping invalid account record.\n";
-                continue;
-            }
-
-            bool duplicate = false;
-
-            for (const Account& existing : accounts) {
-                if (existing.accountNumber == account.accountNumber) {
-                    duplicate = true;
-                    break;
-                }
-            }
-
-            if (duplicate) {
-                cout << "Warning: Skipping duplicate account number.\n";
-                continue;
-            }
-
-            accounts.push_back(account);
-
-            if (number > highestAccountNumber) {
-                highestAccountNumber = number;
-            }
-        } catch (...) {
-            cout << "Warning: Skipping invalid account record.\n";
-        }
-    }
-
-    nextAccountNumber = highestAccountNumber + 1;
-
-    cout << "Loaded " << accounts.size()
-         << " saved account(s).\n";
-}
-
-// Get current date and time
-string currentDateTime() {
-    time_t now = time(nullptr);
-    tm* local = localtime(&now);
-
-    if (local == nullptr) {
-        return "Unknown";
-    }
-
-    stringstream ss;
-    ss << put_time(local, "%Y-%m-%d %H:%M:%S");
-
-    return ss.str();
-}
-
-// Save a transaction in append mode
-bool recordTransaction(
-    const Account& account,
-    const string& type,
-    double amount
-) {
-    ofstream file(TRANSACTION_FILE, ios::app);
-
-    if (!file) {
-        cout << "Error: Could not save transaction.\n";
-        return false;
-    }
-
-    file << account.accountNumber << '|'
-         << type << '|'
-         << fixed << setprecision(2) << amount << '|'
-         << account.balance << '|'
-         << currentDateTime() << '\n';
-
-    if (!file) {
-        cout << "Error writing transaction data.\n";
-        return false;
-    }
-
-    return true;
-}
-
-// Validate a four-digit PIN
+// Check for a four-digit PIN
 bool validPIN(const string& pin) {
     if (pin.length() != 4) {
         return false;
     }
 
     for (char ch : pin) {
-        if (ch < '0' || ch > '9') {
+        if (!isdigit(static_cast<unsigned char>(ch))) {
             return false;
         }
     }
@@ -199,356 +55,414 @@ bool validPIN(const string& pin) {
     return true;
 }
 
-// Read a PIN without displaying its digits
-string readPIN() {
-    while (true) {
-        string pin;
-        char ch;
+// Get current date and time
+string currentDateTime() {
+    time_t now = time(nullptr);
+    tm* timeInfo = localtime(&now);
 
-        cout << "Enter a 4-digit PIN: " << flush;
+    if (timeInfo == nullptr) {
+        return "Unknown";
+    }
 
-#ifndef _WIN32
-        termios oldSettings{};
-        termios newSettings{};
-        bool terminalChanged = false;
+    stringstream result;
+    result << put_time(timeInfo, "%Y-%m-%d %H:%M:%S");
+    return result.str();
+}
 
-        if (tcgetattr(STDIN_FILENO, &oldSettings) == 0) {
-            newSettings = oldSettings;
-            newSettings.c_lflag &= ~(ICANON | ECHO);
-            newSettings.c_cc[VMIN] = 1;
-            newSettings.c_cc[VTIME] = 0;
+// Save all accounts to a text file
+void saveAccounts() {
+    ofstream file(ACCOUNT_FILE);
 
-            if (tcsetattr(STDIN_FILENO, TCSANOW, &newSettings) == 0) {
-                terminalChanged = true;
-            }
+    if (!file) {
+        cout << "Error: Could not save accounts.\n";
+        return;
+    }
+
+    for (const Account& a : accounts) {
+        file << a.accountNumber << '|'
+             << a.name << '|'
+             << a.pin << '|'
+             << a.locked << '|'
+             << a.failedAttempts << '|'
+             << fixed << setprecision(2) << a.balance << '\n';
+    }
+
+    file.close();
+}
+
+// Load saved accounts when the program starts
+void loadAccounts() {
+    accounts.clear();
+
+    ifstream file(ACCOUNT_FILE);
+
+    if (!file) {
+        cout << "No saved accounts found. Starting fresh.\n";
+        return;
+    }
+
+    string line;
+
+    while (getline(file, line)) {
+        stringstream ss(line);
+        string numberText, name, pin, lockedText;
+        string attemptsText, balanceText;
+
+        if (!getline(ss, numberText, '|') ||
+            !getline(ss, name, '|') ||
+            !getline(ss, pin, '|') ||
+            !getline(ss, lockedText, '|') ||
+            !getline(ss, attemptsText, '|') ||
+            !getline(ss, balanceText)) {
+            continue;
         }
-#endif
 
-        while (true) {
-#ifdef _WIN32
-            ch = _getch();
-#else
-            if (terminalChanged) {
-                if (read(STDIN_FILENO, &ch, 1) != 1) {
-                    continue;
-                }
-            } else {
-                if (!cin.get(ch)) {
-                    cin.clear();
-                    continue;
-                }
-            }
-#endif
+        try {
+            Account a;
+            a.accountNumber = stoi(numberText);
+            a.name = name;
+            a.pin = pin;
+            a.locked = (stoi(lockedText) != 0);
+            a.failedAttempts = stoi(attemptsText);
+            a.balance = stod(balanceText);
 
-            if (ch == '\r' || ch == '\n') {
-                if (pin.length() == 4) {
-                    cout << '\n';
-
-#ifndef _WIN32
-                    if (terminalChanged) {
-                        tcsetattr(STDIN_FILENO, TCSANOW, &oldSettings);
-                    }
-#endif
-
-                    return pin;
-                }
-
-                cout << "\nPIN must contain exactly 4 digits.\n";
-                break;
-            }
-
-            if (ch == '\b' || ch == 127) {
-                if (!pin.empty()) {
-                    pin.pop_back();
-                    cout << "\b \b";
-                }
-
+            if (a.accountNumber <= 0 ||
+                a.name.empty() ||
+                a.name.find('|') != string::npos ||
+                !validPIN(a.pin) ||
+                a.failedAttempts < 0 ||
+                a.failedAttempts > 3 ||
+                !isfinite(a.balance) ||
+                a.balance < 0) {
                 continue;
             }
 
-            if (ch >= '0' && ch <= '9' && pin.length() < 4) {
-                pin += ch;
-                cout << '*';
-            }
-        }
+            bool duplicate = false;
 
-#ifndef _WIN32
-        if (terminalChanged) {
-            tcsetattr(STDIN_FILENO, TCSANOW, &oldSettings);
+            for (const Account& existing : accounts) {
+                if (existing.accountNumber == a.accountNumber) {
+                    duplicate = true;
+                    break;
+                }
+            }
+
+            if (!duplicate) {
+                accounts.push_back(a);
+            }
+        } catch (...) {
+            // Ignore invalid records in the file.
         }
-#endif
     }
+
+    file.close();
+    cout << accounts.size() << " account(s) loaded.\n";
 }
 
-// Create a new customer account
+// Add a transaction to the history file
+void recordTransaction(int accountNumber, string type,
+                       double amount, double balance) {
+    ofstream file(TRANSACTION_FILE, ios::app);
+
+    if (!file) {
+        cout << "Warning: Could not save transaction history.\n";
+        return;
+    }
+
+    file << accountNumber << '|'
+         << type << '|'
+         << fixed << setprecision(2) << amount << '|'
+         << balance << '|'
+         << currentDateTime() << '\n';
+
+    file.close();
+}
+
+// Create a customer account
 void createAccount() {
-    Account account;
+    Account a;
 
-    cin.ignore(numeric_limits<streamsize>::max(), '\n');
+    cout << "\n--- Create Account ---\n";
+    cout << "Enter full name: ";
+    getline(cin, a.name);
 
-    cout << "\nEnter customer name: ";
-    getline(cin, account.name);
+    if (a.name.empty() || a.name.find('|') != string::npos) {
+        cout << "Invalid name.\n";
+        return;
+    }
 
-    bool hasNonWhitespace = false;
+    int highestNumber = 1000;
 
-    for (char ch : account.name) {
-        if (!isspace(static_cast<unsigned char>(ch))) {
-            hasNonWhitespace = true;
+    for (const Account& existing : accounts) {
+        if (existing.accountNumber > highestNumber) {
+            highestNumber = existing.accountNumber;
+        }
+    }
+
+    a.accountNumber = highestNumber + 1;
+    a.locked = false;
+    a.failedAttempts = 0;
+    a.balance = 0.0;
+
+    while (true) {
+        cout << "Create a four-digit PIN: ";
+        getline(cin, a.pin);
+
+        if (validPIN(a.pin)) {
             break;
         }
+
+        cout << "PIN must contain exactly four digits.\n";
     }
 
-    if (!hasNonWhitespace ||
-        account.name.find('|') != string::npos) {
-        cout << "Enter a valid name without the | character.\n";
-        return;
-    }
+    accounts.push_back(a);
+    saveAccounts();
 
-    account.accountNumber = to_string(nextAccountNumber);
-    account.pin = readPIN();
-
-    if (!validPIN(account.pin)) {
-        cout << "Invalid PIN.\n";
-        return;
-    }
-
-    accounts.push_back(account);
-
-    if (!saveAccounts()) {
-        accounts.pop_back();
-        cout << "Account creation cancelled because saving failed.\n";
-        return;
-    }
-
-    nextAccountNumber++;
+    recordTransaction(a.accountNumber, "ACCOUNT_CREATED",
+                      0.0, a.balance);
 
     cout << "\nAccount created successfully!\n";
-    cout << "Account number: " << account.accountNumber << '\n';
-    cout << "Opening balance: Rs. 0.00\n";
-    cout << "Please remember your account number.\n";
+    cout << "Your account number is: "
+         << a.accountNumber << '\n';
 }
 
-// Display transaction history for a customer
-void showTransactionHistory(const string& accountNumber) {
+// Display transaction history for one account
+void showTransactionHistory(int accountNumber) {
     ifstream file(TRANSACTION_FILE);
+
+    cout << "\n--- Transaction History ---\n";
 
     if (!file) {
         cout << "No transaction history available.\n";
         return;
     }
 
+    cout << left << setw(20) << "Transaction"
+         << setw(12) << "Amount"
+         << setw(12) << "Balance"
+         << "Date and Time\n";
+
+    cout << string(65, '-') << '\n';
+
     string line;
     bool found = false;
 
-    cout << "\n========== TRANSACTION HISTORY ==========\n";
-    cout << "Account | Type | Amount | Balance | Date/Time\n";
-
     while (getline(file, line)) {
         stringstream ss(line);
+        string numberText, type, amountText;
+        string balanceText, dateTime;
 
-        string number;
-        string type;
-        string amount;
-        string balance;
-        string date;
-
-        if (!getline(ss, number, '|') ||
+        if (!getline(ss, numberText, '|') ||
             !getline(ss, type, '|') ||
-            !getline(ss, amount, '|') ||
-            !getline(ss, balance, '|') ||
-            !getline(ss, date)) {
+            !getline(ss, amountText, '|') ||
+            !getline(ss, balanceText, '|') ||
+            !getline(ss, dateTime)) {
             continue;
         }
 
-        if (number == accountNumber) {
-            cout << number << " | "
-                 << type << " | "
-                 << amount << " | "
-                 << balance << " | "
-                 << date << '\n';
+        try {
+            if (stoi(numberText) != accountNumber) {
+                continue;
+            }
+
+            cout << left << setw(20) << type
+                 << setw(12) << amountText
+                 << setw(12) << balanceText
+                 << dateTime << '\n';
 
             found = true;
+        } catch (...) {
+            continue;
         }
     }
 
     if (!found) {
-        cout << "No transactions found for this account.\n";
+        cout << "No transactions found.\n";
     }
+
+    file.close();
 }
 
-// Customer menu after successful login
-void customerMenu(Account& account) {
+// Deposit money
+void depositMoney(int index) {
+    double amount;
+
+    cout << "Enter deposit amount: ";
+
+    if (!(cin >> amount)) {
+        cout << "Invalid amount.\n";
+        cin.clear();
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+        return;
+    }
+
+    cin.ignore(numeric_limits<streamsize>::max(), '\n');
+
+    if (!isfinite(amount) || amount <= 0 ||
+        amount > 1000000000.0 ||
+        accounts[index].balance + amount > 1000000000.0) {
+        cout << "Enter a valid positive amount.\n";
+        return;
+    }
+
+    accounts[index].balance += amount;
+    saveAccounts();
+
+    recordTransaction(accounts[index].accountNumber,
+                      "DEPOSIT", amount,
+                      accounts[index].balance);
+
+    cout << fixed << setprecision(2);
+    cout << "Deposit successful. New balance: Rs. "
+         << accounts[index].balance << '\n';
+}
+
+// Withdraw money
+void withdrawMoney(int index) {
+    double amount;
+
+    cout << "Enter withdrawal amount: ";
+
+    if (!(cin >> amount)) {
+        cout << "Invalid amount.\n";
+        cin.clear();
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+        return;
+    }
+
+    cin.ignore(numeric_limits<streamsize>::max(), '\n');
+
+    if (!isfinite(amount) || amount <= 0) {
+        cout << "Enter a valid positive amount.\n";
+        return;
+    }
+
+    if (amount > accounts[index].balance) {
+        cout << "Insufficient balance.\n";
+        return;
+    }
+
+    accounts[index].balance -= amount;
+
+    if (accounts[index].balance < 0.005) {
+        accounts[index].balance = 0.0;
+    }
+
+    saveAccounts();
+
+    recordTransaction(accounts[index].accountNumber,
+                      "WITHDRAWAL", amount,
+                      accounts[index].balance);
+
+    cout << fixed << setprecision(2);
+    cout << "Withdrawal successful. Remaining balance: Rs. "
+         << accounts[index].balance << '\n';
+}
+
+// Customer menu after login
+void customerMenu(int index) {
     int choice;
 
-    do {
+    while (true) {
         cout << "\n========== CUSTOMER MENU ==========\n";
-        cout << "1. Check balance\n";
-        cout << "2. Deposit\n";
-        cout << "3. Withdraw\n";
-        cout << "4. View transaction history\n";
-        cout << "0. Logout\n";
+        cout << "Welcome, " << accounts[index].name << "!\n";
+        cout << "1. Check Balance\n";
+        cout << "2. Deposit Money\n";
+        cout << "3. Withdraw Money\n";
+        cout << "4. Transaction History\n";
+        cout << "5. Logout\n";
         cout << "Enter choice: ";
 
         if (!(cin >> choice)) {
+            cout << "Invalid choice.\n";
             cin.clear();
             cin.ignore(numeric_limits<streamsize>::max(), '\n');
-            cout << "Invalid input. Enter a number.\n";
             continue;
         }
 
-        double amount;
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
 
         switch (choice) {
             case 1:
                 cout << fixed << setprecision(2);
                 cout << "Current balance: Rs. "
-                     << account.balance << '\n';
+                     << accounts[index].balance << '\n';
                 break;
-
-            case 2: {
-                cout << "Enter deposit amount: Rs. ";
-
-                if (!(cin >> amount)) {
-                    cin.clear();
-                    cin.ignore(numeric_limits<streamsize>::max(), '\n');
-                    cout << "Invalid amount.\n";
-                    break;
-                }
-
-                if (!isfinite(amount) ||
-                    amount <= 0 ||
-                    amount > 1000000000000.0 ||
-                    account.balance > 1000000000000.0 - amount) {
-                    cout << "Enter a valid deposit amount.\n";
-                    break;
-                }
-
-                double oldBalance = account.balance;
-                account.balance += amount;
-
-                if (!saveAccounts()) {
-                    account.balance = oldBalance;
-                    cout << "Deposit cancelled because saving failed.\n";
-                    break;
-                }
-
-                if (!recordTransaction(account, "DEPOSIT", amount)) {
-                    cout << "Warning: Deposit saved, but transaction "
-                            "history could not be saved.\n";
-                } else {
-                    cout << "Deposit successful.\n";
-                }
-
-                cout << fixed << setprecision(2)
-                     << "Current balance: Rs. "
-                     << account.balance << '\n';
+            case 2:
+                depositMoney(index);
                 break;
-            }
-
-            case 3: {
-                cout << "Enter withdrawal amount: Rs. ";
-
-                if (!(cin >> amount)) {
-                    cin.clear();
-                    cin.ignore(numeric_limits<streamsize>::max(), '\n');
-                    cout << "Invalid amount.\n";
-                    break;
-                }
-
-                if (!isfinite(amount) || amount <= 0) {
-                    cout << "Enter a valid withdrawal amount.\n";
-                    break;
-                }
-
-                if (amount > account.balance) {
-                    cout << "Insufficient balance.\n";
-                    break;
-                }
-
-                double oldBalance = account.balance;
-                account.balance -= amount;
-
-                if (!saveAccounts()) {
-                    account.balance = oldBalance;
-                    cout << "Withdrawal cancelled because saving failed.\n";
-                    break;
-                }
-
-                if (!recordTransaction(account, "WITHDRAWAL", amount)) {
-                    cout << "Warning: Withdrawal saved, but transaction "
-                            "history could not be saved.\n";
-                } else {
-                    cout << "Withdrawal successful.\n";
-                }
-
-                cout << fixed << setprecision(2)
-                     << "Current balance: Rs. "
-                     << account.balance << '\n';
+            case 3:
+                withdrawMoney(index);
                 break;
-            }
-
             case 4:
-                showTransactionHistory(account.accountNumber);
+                showTransactionHistory(
+                    accounts[index].accountNumber);
                 break;
-
-            case 0:
+            case 5:
                 cout << "Logged out successfully.\n";
-                break;
-
+                return;
             default:
-                cout << "Invalid menu choice.\n";
+                cout << "Invalid choice.\n";
         }
-
-    } while (choice != 0);
+    }
 }
 
 // Customer login
 void customerLogin() {
-    string accountNumber;
+    int accountNumber;
 
     cout << "\nEnter account number: ";
-    cin >> accountNumber;
+
+    if (!(cin >> accountNumber)) {
+        cout << "Invalid account number.\n";
+        cin.clear();
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+        return;
+    }
 
     cin.ignore(numeric_limits<streamsize>::max(), '\n');
 
-    for (Account& account : accounts) {
-        if (account.accountNumber == accountNumber) {
-            if (account.locked) {
-                cout << "This account is locked.\n";
-                return;
-            }
+    int index = -1;
 
-            string enteredPIN = readPIN();
-
-            if (enteredPIN == account.pin) {
-                account.failedAttempts = 0;
-
-                if (!saveAccounts()) {
-                    cout << "Warning: Could not save login status.\n";
-                }
-
-                cout << "\nLogin successful!\n";
-                cout << "Welcome, " << account.name << "!\n";
-
-                customerMenu(account);
-            } else {
-                account.failedAttempts++;
-
-                cout << "\nIncorrect PIN.\n";
-
-                if (account.failedAttempts >= 3) {
-                    account.locked = true;
-                    cout << "Account locked after 3 failed attempts.\n";
-                }
-
-                saveAccounts();
-            }
-
-            return;
+    for (size_t i = 0; i < accounts.size(); ++i) {
+        if (accounts[i].accountNumber == accountNumber) {
+            index = static_cast<int>(i);
+            break;
         }
     }
 
-    cout << "Account number not found.\n";
+    if (index == -1) {
+        cout << "Account not found.\n";
+        return;
+    }
+
+    if (accounts[index].locked) {
+        cout << "Account is locked after failed login attempts.\n";
+        return;
+    }
+
+    string enteredPIN;
+    cout << "Enter your PIN: ";
+    getline(cin, enteredPIN);
+
+    if (enteredPIN == accounts[index].pin) {
+        accounts[index].failedAttempts = 0;
+        saveAccounts();
+
+        cout << "Login successful!\n";
+        customerMenu(index);
+    } else {
+        accounts[index].failedAttempts++;
+
+        if (accounts[index].failedAttempts >= 3) {
+            accounts[index].locked = true;
+            cout << "Account locked after three incorrect PINs.\n";
+        } else {
+            cout << "Incorrect PIN. Attempts remaining: "
+                 << 3 - accounts[index].failedAttempts << '\n';
+        }
+
+        saveAccounts();
+    }
 }
 
 // Main program
@@ -557,40 +471,36 @@ int main() {
 
     int choice;
 
-    do {
+    while (true) {
         cout << "\n====================================\n";
-        cout << "      BANK MANAGEMENT SYSTEM\n";
+        cout << "       BANK MANAGEMENT SYSTEM\n";
         cout << "====================================\n";
-        cout << "1. Create customer account\n";
-        cout << "2. Customer login\n";
-        cout << "0. Exit\n";
+        cout << "1. Create Account\n";
+        cout << "2. Customer Login\n";
+        cout << "3. Exit\n";
         cout << "Enter choice: ";
 
         if (!(cin >> choice)) {
+            cout << "Invalid choice. Enter a number.\n";
             cin.clear();
             cin.ignore(numeric_limits<streamsize>::max(), '\n');
-            cout << "Invalid input. Enter a number.\n";
             continue;
         }
+
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
 
         switch (choice) {
             case 1:
                 createAccount();
                 break;
-
             case 2:
                 customerLogin();
                 break;
-
-            case 0:
-                cout << "Exiting application.\n";
-                break;
-
+            case 3:
+                cout << "Thank you for using the Bank Management System.\n";
+                return 0;
             default:
-                cout << "Invalid menu choice.\n";
+                cout << "Invalid choice.\n";
         }
-
-    } while (choice != 0);
-
-    return 0;
+    }
 }
