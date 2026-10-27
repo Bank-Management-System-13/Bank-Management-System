@@ -13,3 +13,6 @@ audit.log
 .idea/
 .DS_Store
 Thumbs.db
+
+bms
+bms.exe
