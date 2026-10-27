@@ -6,7 +6,8 @@
 #include <sstream>
 #include <fstream>
 #include <cctype>
-
+#include <cmath>
+#include <filesystem>
 #ifdef _WIN32
 #include <conio.h>
 #else
@@ -219,6 +220,8 @@ void createAccount() {
     cout << "Please remember your account number.\n";
 }
 
+
+
 // Issue #5: Show details and current balance for the logged-in account.
 void balanceEnquiry(const Account& account) {
     cout << "\n========== BALANCE ENQUIRY ==========\n";
@@ -229,22 +232,118 @@ void balanceEnquiry(const Account& account) {
     cout << "=====================================\n";
 }
 
+
+void deposit(Account& account) {
+    double amount;
+
+    cout << "\n========== DEPOSIT MONEY ==========\n";
+    cout << "Enter deposit amount: Rs. ";
+
+    if (!(cin >> amount)) {
+        cin.clear();
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+        cout << "Invalid input. Please enter a numeric amount.\n";
+        return;
+    }
+
+    if (!isfinite(amount) || amount <= 0) {
+        cout << "Deposit amount must be greater than zero.\n";
+        return;
+    }
+
+    account.balance += amount;
+
+    if (!saveAccounts()) {
+        account.balance -= amount;
+        cout << "Error saving account. Deposit cancelled.\n";
+        return;
+    }
+
+    recordTransaction(account.accountNumber, "DEPOSIT",
+                     amount, account.balance);
+
+    cout << fixed << setprecision(2);
+    cout << "Deposit successful!\n";
+    cout << "Deposited: Rs. " << amount << '\n';
+    cout << "Updated balance: Rs. " << account.balance << '\n';
+}
+
+void withdrawMoney(Account& account) {
+    double amount;
+
+    cout << "\n========== WITHDRAW MONEY ==========\n";
+    cout << "Enter withdrawal amount: Rs. ";
+
+    if (!(cin >> amount)) {
+        cin.clear();
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+        cout << "Invalid input. Please enter a numeric amount.\n";
+        return;
+    }
+
+    if (!isfinite(amount) || amount <= 0) {
+        cout << "Withdrawal amount must be greater than zero.\n";
+        return;
+    }
+
+    if (amount > account.balance) {
+        cout << "Withdrawal failed: Insufficient balance.\n";
+        cout << fixed << setprecision(2);
+        cout << "Available balance: Rs. "
+             << account.balance << '\n';
+        return;
+    }
+
+    account.balance -= amount;
+
+    if (!saveAccounts()) {
+        account.balance += amount;
+        cout << "Error saving account. Withdrawal cancelled.\n";
+        return;
+    }
+
+    recordTransaction(account.accountNumber, "WITHDRAWAL",
+                      amount, account.balance);
+
+    cout << fixed << setprecision(2);
+    cout << "Withdrawal successful!\n";
+    cout << "Withdrawn: Rs. " << amount << '\n';
+    cout << "Updated balance: Rs. " << account.balance << '\n';
+}
+
+
 void customerMenu(size_t accountIndex) {
     int choice;
 
     do {
         cout << "\n========== CUSTOMER MENU ==========\n";
         cout << "1. Balance enquiry\n";
+        cout << "2. Deposit money\n";
+        cout << "3. Withdraw money\n";
         cout << "0. Logout\n";
         cout << "Enter choice: ";
 
-        cin >> choice;
+        if (!(cin >> choice)) {
+            cin.clear();
+            cin.ignore(numeric_limits<streamsize>::max(), '\n');
+            cout << "Invalid input. Enter a number.\n";
+            continue;
+        }
+
+        if (accountIndex >= accounts.size()) {
+            cout << "Account not found.\n";
+            return;
+        }
 
         switch (choice) {
             case 1:
-                if (accountIndex < accounts.size()) {
-                    balanceEnquiry(accounts[accountIndex]);
-                }
+                balanceEnquiry(accounts[accountIndex]);
+                break;
+            case 2:
+                deposit(accounts[accountIndex]);
+                break;
+            case 3:
+                withdrawMoney(accounts[accountIndex]);
                 break;
             case 0:
                 cout << "Logged out successfully.\n";
@@ -252,6 +351,7 @@ void customerMenu(size_t accountIndex) {
             default:
                 cout << "Invalid menu choice.\n";
         }
+
     } while (choice != 0);
 }
 
@@ -281,17 +381,22 @@ void customerLogin() {
     cout << "Account number not found.\n";
 }
 
+
 int main() {
-    // Issue #6: Restore saved accounts before showing the main menu.
+    cout << "Working directory: "
+     << filesystem::current_path() << '\n';
     loadAccounts();
 
     int choice;
+
     do {
         cout << "\n====================================\n";
         cout << "      BANK MANAGEMENT SYSTEM\n";
         cout << "====================================\n";
         cout << "1. Create customer account\n";
         cout << "2. Customer login\n";
+        cout << "3. Deposit money\n";
+        cout << "4. Withdraw money\n";
         cout << "0. Exit\n";
         cout << "Enter choice: ";
 
@@ -306,17 +411,32 @@ int main() {
             case 1:
                 createAccount();
                 break;
+
             case 2:
                 customerLogin();
                 break;
+
+            case 3:
+                cout << "\nPlease log in to access your account.\n";
+                customerLogin();
+                // Deposit should happen only after successful login.
+                break;
+
+            case 4:
+                cout << "\nPlease log in to access your account.\n";
+                customerLogin();
+                // Withdrawal should happen only after successful login.
+                break;
+
             case 0:
-                // Save again on exit as an extra safeguard.
                 saveAccounts();
                 cout << "Exiting application.\n";
                 break;
+
             default:
                 cout << "Invalid menu choice.\n";
         }
+
     } while (choice != 0);
 
     return 0;
