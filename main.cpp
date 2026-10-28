@@ -176,6 +176,40 @@ bool validPIN(const string& pin) {
     return true;
 }
 
+
+bool readInteger(const string& prompt, int& value) {
+    cout << prompt;
+
+    if (cin >> value) {
+        return true;
+    }
+
+    if (cin.eof()) {
+        return false;
+    }
+
+    cin.clear();
+    cin.ignore(numeric_limits<streamsize>::max(), '\n');
+
+    cout << "Invalid input. Please enter a whole number.\n";
+    return false;
+}
+
+bool isValidAccountNumber(const string& accountNumber) {
+    if (accountNumber.empty()) {
+        return false;
+    }
+
+    for (char ch : accountNumber) {
+        if (!isdigit(static_cast<unsigned char>(ch))) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+
 void createAccount() {
     Account account;
 
@@ -207,11 +241,14 @@ void createAccount() {
 
     account.balance = 0.0;
     accounts.push_back(account);
-    nextAccountNumber++;
 
     if (!saveAccounts()) {
-        cout << "Warning: Account created in memory, but could not be saved.\n";
-    }
+        accounts.pop_back();
+        cout << "Error: Account creation failed because saving was unsuccessful.\n";
+        return;
+}
+
+nextAccountNumber++;
 
     cout << "\nAccount created successfully!\n";
     cout << "Account number: " << account.accountNumber << '\n';
@@ -355,17 +392,33 @@ void customerMenu(size_t accountIndex) {
     } while (choice != 0);
 }
 
+
 void customerLogin() {
     string accountNumber;
-    string enteredPIN;
 
     cout << "\nEnter account number: ";
-    cin >> accountNumber;
+
+    if (!(cin >> accountNumber)) {
+        if (cin.eof()) {
+            return;
+        }
+
+        cin.clear();
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+        cout << "Error reading account number.\n";
+        return;
+    }
+
+    if (!isValidAccountNumber(accountNumber)) {
+        cout << "Invalid account number. Use digits only.\n";
+        return;
+    }
 
     for (size_t i = 0; i < accounts.size(); ++i) {
         Account& account = accounts[i];
+
         if (account.accountNumber == accountNumber) {
-            enteredPIN = readPIN();
+            string enteredPIN = readPIN();
 
             if (enteredPIN == account.pin) {
                 cout << "\nLogin successful!\n";
@@ -374,12 +427,14 @@ void customerLogin() {
             } else {
                 cout << "\nIncorrect PIN.\n";
             }
+
             return;
         }
     }
 
     cout << "Account number not found.\n";
 }
+
 
 
 int main() {
