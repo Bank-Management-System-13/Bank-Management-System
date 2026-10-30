@@ -14,5 +14,19 @@ audit.log
 .DS_Store
 Thumbs.db
 
+# Existing BMS artifacts
 bms
 bms.exe
+
+# Sprint 2 temporary copies and handoff packages
+/bank_sprint2/
+/Sprint2_Deliverables/
+/main1.cpp
+
+# Sprint 2 generated files
+/Sprint2/bank_management_system.exe
+/Sprint2/accounts.txt
+/Sprint2/transactions.txt
+/Sprint2/audit.log
+/Sprint2/account_report.txt
+/Sprint2/transaction_report.txt
