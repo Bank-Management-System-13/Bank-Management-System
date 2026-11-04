@@ -19,3 +19,17 @@ bool logAudit(const std::string& event,
 std::string auditTimestamp();
 
 #endif
+inline bool writeAudit(
+    const std::string& actor,
+    const std::string& event,
+    const std::string& accountNumber,
+    const std::string& details = ""
+) {
+    std::string message = "actor=" + actor;
+
+    if (!details.empty()) {
+        message += "; " + details;
+    }
+
+    return logAudit(event, accountNumber, message);
+}
