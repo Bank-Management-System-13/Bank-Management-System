@@ -2,6 +2,7 @@
 #include "storage.h"
 #include "security.h"
 #include "audit.h"
+#include "reports.h"
 #include <iostream>
 #include <iomanip>
 #include <limits>
@@ -18,9 +19,12 @@ std::string timestampNow() {
 #endif
     char b[32]; std::strftime(b, sizeof(b), "%Y-%m-%d %H:%M:%S", &tm); return b;
 }
-void record(const Account& a, const std::string& type, double amount) {
-    appendTransaction({a.accountNumber, type, amount, a.balance, timestampNow()});
-    writeAudit(a.accountNumber, type, a.accountNumber, "amount=" + std::to_string(amount));
+bool record(const Account& a, const std::string& type, double amount) {
+    const bool transactionSaved = appendTransaction(
+        {a.accountNumber, type, amount, a.balance, timestampNow()});
+    const bool auditSaved = writeAudit(
+        a.accountNumber, type, a.accountNumber, "amount=" + std::to_string(amount));
+    return transactionSaved && auditSaved;
 }
 }
 
@@ -79,7 +83,7 @@ void customerMenu(int index) {
     int choice = -1;
     while (choice != 0) {
         Account& a = accounts[static_cast<std::size_t>(index)];
-        std::cout << "\n--- CUSTOMER MENU ---\n1. Balance enquiry\n2. Deposit\n3. Withdraw\n0. Logout\n";
+        std::cout << "\n--- CUSTOMER MENU ---\n1. Balance enquiry\n2. Deposit\n3. Withdraw\n4. Reports\n0. Logout\n";
         if (!readMenuChoice("Choice: ", choice)) return;
         if (choice == 1) {
             std::cout << "Account: " << a.accountNumber << "\nName: " << a.name
@@ -101,8 +105,18 @@ void customerMenu(int index) {
             }
             a.balance += (choice == 2 ? amount : -amount);
             if (!saveAccounts()) { a.balance = old; std::cout << "Save failed; transaction cancelled.\n"; continue; }
-            record(a, choice == 2 ? "DEPOSIT" : "WITHDRAWAL", amount);
+            if (!record(a, choice == 2 ? "DEPOSIT" : "WITHDRAWAL", amount)) {
+                a.balance = old;
+                if (!saveAccounts()) {
+                    std::cout << "Critical: transaction history failed and balance rollback could not be saved.\n";
+                } else {
+                    std::cout << "Transaction history/audit write failed; balance was rolled back.\n";
+                }
+                continue;
+            }
             std::cout << "Transaction successful. New balance: Rs. " << std::fixed << std::setprecision(2) << a.balance << '\n';
+        } else if (choice == 4) {
+            showReportsMenu(a);
         } else if (choice != 0) std::cout << "Invalid choice.\n";
     }
     writeAudit(accounts[static_cast<std::size_t>(index)].accountNumber, "LOGOUT", accounts[static_cast<std::size_t>(index)].accountNumber, "Customer logged out");
