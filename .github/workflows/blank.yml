@@ -2,29 +2,49 @@ name: C++ Build and Test
 
 on:
   push:
-    branches: [main]
+    branches: [main, feature/tests-audit-reports]
   pull_request:
     branches: [main]
   workflow_dispatch:
 
 jobs:
-  build:
+  build-and-test:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install C++ compiler
+      - name: Install compiler and coverage tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y g++
+          sudo apt-get install -y g++ gcovr
 
       - name: Build Sprint 1
         run: |
           g++ -std=c++17 -Wall -Wextra -pedantic main.cpp -o bank_management_system
 
-      - name: Build Sprint 2
+      - name: Build Sprint 2 application
         run: |
-          g++ -std=c++17 -Wall -Wextra -pedantic -ISprint2/include Sprint2/src/*.cpp -o bank_management_system_sprint2
+          cd Sprint2
+          g++ -std=c++17 -Wall -Wextra -pedantic -Iinclude src/*.cpp -o bank_management_system
 
+      - name: Build automated tests with coverage instrumentation
+        run: |
+          cd Sprint2
+          mkdir -p test-runtime
+          g++ -std=c++17 -Wall -Wextra -pedantic --coverage -Iinclude -Itests \
+            tests/test_main.cpp tests/test_audit.cpp tests/test_storage.cpp \
+            tests/test_reports.cpp tests/test_security.cpp tests/test_admin.cpp \
+            src/audit.cpp src/storage.cpp src/reports.cpp src/security.cpp src/admin.cpp \
+            -o test-runtime/tests
+
+      - name: Run automated tests in isolated working directory
+        run: |
+          cd Sprint2/test-runtime
+          ./tests
+
+      - name: Generate coverage summary
+        run: |
+          cd Sprint2
+          gcovr --root . --filter 'src/.*' --print-summary
