@@ -28,4 +28,20 @@ The demo admin PIN is `2468`, configured in `src/security.cpp`. Change it before
 
 ## Generated files
 
-`accounts.txt`, `transactions.txt`, `audit.log`, `account_report.txt`, and `transaction_report.txt` are created in the current working directory.
+`accounts.txt`, `transactions.txt`, and `audit.log` are created in the current working directory. Exporting a customer statement creates `statement_<account number>.txt`.
+
+## Automated tests
+
+The regression suite is in `tests/`. GitHub Actions compiles and runs the tests in an isolated `test-runtime/` working directory, keeping the application's normal data files separate. The workflow also prints a gcovr coverage summary.
+
+The test executable can be built from this folder on a system with GCC:
+
+```bash
+mkdir -p test-runtime
+g++ -std=c++17 -Wall -Wextra -pedantic --coverage -Iinclude -Itests \
+  tests/test_main.cpp tests/test_audit.cpp tests/test_storage.cpp \
+  tests/test_reports.cpp tests/test_security.cpp tests/test_admin.cpp \
+  src/audit.cpp src/storage.cpp src/reports.cpp src/security.cpp src/admin.cpp src/auth.cpp \
+  -o test-runtime/tests
+(cd test-runtime && ./tests)
+```
