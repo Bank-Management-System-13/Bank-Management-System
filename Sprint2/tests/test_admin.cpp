@@ -332,3 +332,41 @@ TEST(Admin_UnlockLoginResetsLockAndFailedAttempts) {
     CHECK(accounts[0].balance == 300.0);
 }
 
+// ----- Persistence and audit -----------------------------------------------
+
+TEST(Admin_StatusChangesArePersistedAfterReload) {
+    AdminTestScope scope;
+    addAccount("300101", "Asha Rao", 100.0);
+
+    runManageStatus("300101\n1\n");
+    runManageStatus("300101\n3\n");
+    CHECK(loadAccounts());
+
+    CHECK(accounts.size() == 1);
+    CHECK(accounts[0].frozen);
+    CHECK(accounts[0].closed);
+    CHECK(!accounts[0].deleted);
+}
+
+TEST(Admin_StatusChangesAreAuditLogged) {
+    AdminTestScope scope;
+    addAccount("300101", "Asha Rao");
+
+    runManageStatus("300101\n1\n");
+    runManageStatus("300101\n2\n");
+    runManageStatus("300101\n3\n");
+    runManageStatus("300101\n4\n");
+    runManageStatus("300101\n6\n");
+    runManageStatus("300101\n5\n");
+    std::string log = readTextFile("audit.log");
+
+    CHECK(contains(log, "ACCOUNT_FROZEN"));
+    CHECK(contains(log, "ACCOUNT_UNFROZEN"));
+    CHECK(contains(log, "ACCOUNT_CLOSED"));
+    CHECK(contains(log, "ACCOUNT_REOPENED"));
+    CHECK(contains(log, "LOGIN_UNLOCKED"));
+    CHECK(contains(log, "ACCOUNT_SOFT_DELETED"));
+    CHECK(contains(log, "acct=300101"));
+    CHECK(contains(log, "actor=ADMIN"));
+}
+
