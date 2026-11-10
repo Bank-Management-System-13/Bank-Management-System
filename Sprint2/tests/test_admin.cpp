@@ -137,6 +137,12 @@ std::string runSearch(const std::string& input) {
     return io.output();
 }
 
+std::string runManageStatus(const std::string& input) {
+    ConsoleCapture io(input);
+    manageAccountStatus();
+    return io.output();
+}
+
 }  // namespace
 
 // ----- Search and view -----------------------------------------------------
@@ -226,5 +232,49 @@ TEST(Admin_SearchIsWrittenToAuditLog) {
     CHECK(contains(log, "ACCOUNT_SEARCH"));
     CHECK(contains(log, "acct=300101"));
     CHECK(contains(log, "Record(s) viewed"));
+}
+
+// ----- Freeze and unfreeze -------------------------------------------------
+
+TEST(Admin_UnfreezeClearsFrozenFlag) {
+    AdminTestScope scope;
+    addAccount("300101", "Asha Rao", 500.0);
+    accounts[0].frozen = true;
+
+    std::string out = runManageStatus("300101\n2\n");
+
+    CHECK(contains(out, "Account status updated."));
+    CHECK(!accounts[0].frozen);
+    CHECK(accounts[0].balance == 500.0);
+}
+
+TEST(Admin_FreezingTwiceKeepsAccountFrozen) {
+    AdminTestScope scope;
+    addAccount("300101", "Asha Rao");
+
+    runManageStatus("300101\n1\n");
+    runManageStatus("300101\n1\n");
+
+    CHECK(accounts[0].frozen);
+}
+
+// ----- Close and reopen ----------------------------------------------------
+
+TEST(Admin_CloseAndReopenChangeOnlyClosedFlag) {
+    AdminTestScope scope;
+    addAccount("300101", "Asha Rao", 750.0);
+    accounts[0].frozen = true;
+
+    std::string closeOut = runManageStatus("300101\n3\n");
+    CHECK(contains(closeOut, "Account status updated."));
+    CHECK(accounts[0].closed);
+    CHECK(accounts[0].frozen);
+    CHECK(accounts[0].balance == 750.0);
+
+    std::string reopenOut = runManageStatus("300101\n4\n");
+    CHECK(contains(reopenOut, "Account status updated."));
+    CHECK(!accounts[0].closed);
+    CHECK(accounts[0].frozen);
+    CHECK(accounts[0].balance == 750.0);
 }
 
