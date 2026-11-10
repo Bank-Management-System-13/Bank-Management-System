@@ -426,3 +426,82 @@ TEST(Admin_StatusChangeIsRolledBackWhenSaveFails) {
     CHECK(!accounts[0].frozen);
 }
 
+// ----- Admin authentication ------------------------------------------------
+// These tests read the admin PIN through std::cin. On Windows the PIN is read
+// directly from the console (_getch), which a test cannot feed, so they run on
+// Linux (the GitHub Actions runner) only.
+#ifndef _WIN32
+
+TEST(Admin_CorrectPinOpensMenuAndLogsLoginAndLogout) {
+    AdminTestScope scope;
+
+    // The first empty line is the newline left over from the previous menu choice.
+    ConsoleCapture io("\n2468\n0\n");
+    adminMenu();
+    std::string out = io.output();
+    std::string log = readTextFile("audit.log");
+
+    CHECK(contains(out, "--- ADMIN MENU ---"));
+    CHECK(!contains(out, "Admin authentication failed."));
+    CHECK(contains(log, "ADMIN_LOGIN_SUCCESS"));
+    CHECK(contains(log, "ADMIN_LOGOUT"));
+}
+
+TEST(Admin_WrongPinIsRejected) {
+    AdminTestScope scope;
+
+    ConsoleCapture io("\n9753\n");
+    adminMenu();
+    std::string out = io.output();
+    std::string log = readTextFile("audit.log");
+
+    CHECK(contains(out, "Admin authentication failed."));
+    CHECK(!contains(out, "ADMIN MENU"));
+    CHECK(contains(log, "ADMIN_LOGIN_FAILED"));
+    CHECK(!contains(log, "ADMIN_LOGIN_SUCCESS"));
+}
+
+TEST(Admin_PinsAreNeverWrittenToAuditLog) {
+    AdminTestScope scope;
+
+    {
+        ConsoleCapture io("\n2468\n0\n");
+        adminMenu();
+    }
+    {
+        ConsoleCapture io("\n9753\n");
+        adminMenu();
+    }
+    std::string log = readTextFile("audit.log");
+
+    CHECK(contains(log, "ADMIN_LOGIN_SUCCESS"));
+    CHECK(contains(log, "ADMIN_LOGIN_FAILED"));
+    CHECK(!contains(log, "2468"));
+    CHECK(!contains(log, "9753"));
+}
+
+TEST(Admin_MenuReachesSearchAndStatusScreens) {
+    AdminTestScope scope;
+    addAccount("300101", "Asha Rao", 100.0);
+
+    // Login, option 1 (search ALL), option 2 (freeze 300101), option 0 (logout).
+    ConsoleCapture io("\n2468\n1\nALL\n2\n300101\n1\n0\n");
+    adminMenu();
+    std::string out = io.output();
+
+    CHECK(contains(out, "Account: 300101"));
+    CHECK(contains(out, "Account status updated."));
+    CHECK(accounts[0].frozen);
+}
+
+TEST(Admin_MenuRejectsInvalidChoice) {
+    AdminTestScope scope;
+
+    ConsoleCapture io("\n2468\n7\n0\n");
+    adminMenu();
+    std::string out = io.output();
+
+    CHECK(contains(out, "Invalid choice."));
+}
+
+#endif  // _WIN32
