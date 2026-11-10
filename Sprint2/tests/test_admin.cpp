@@ -278,3 +278,57 @@ TEST(Admin_CloseAndReopenChangeOnlyClosedFlag) {
     CHECK(accounts[0].balance == 750.0);
 }
 
+// ----- Soft delete ---------------------------------------------------------
+
+TEST(Admin_SoftDeleteKeepsRecordAndBalance) {
+    AdminTestScope scope;
+    addAccount("300101", "Asha Rao", 500.0);
+
+    runManageStatus("300101\n5\n");
+
+    CHECK(accounts.size() == 1);
+    CHECK(accounts[0].deleted);
+    CHECK(accounts[0].balance == 500.0);
+    CHECK(accounts[0].name == "Asha Rao");
+}
+
+TEST(Admin_SoftDeletedAccountCannotBeManagedAgain) {
+    AdminTestScope scope;
+    addAccount("300101", "Asha Rao");
+    accounts[0].deleted = true;
+
+    std::string out = runManageStatus("300101\n1\n");
+
+    CHECK(contains(out, "Account not found."));
+    CHECK(!accounts[0].frozen);
+}
+
+TEST(Admin_SoftDeleteIsPersistedAfterReload) {
+    AdminTestScope scope;
+    addAccount("300101", "Asha Rao", 500.0);
+
+    runManageStatus("300101\n5\n");
+    CHECK(loadAccounts());
+
+    CHECK(accounts.size() == 1);
+    CHECK(accounts[0].deleted);
+    CHECK(accounts[0].balance == 500.0);
+    CHECK(findAccountIndex("300101") == -1);
+}
+
+// ----- Unlock login --------------------------------------------------------
+
+TEST(Admin_UnlockLoginResetsLockAndFailedAttempts) {
+    AdminTestScope scope;
+    addAccount("300101", "Asha Rao", 300.0);
+    accounts[0].locked = true;
+    accounts[0].failedAttempts = 3;
+
+    std::string out = runManageStatus("300101\n6\n");
+
+    CHECK(contains(out, "Account status updated."));
+    CHECK(!accounts[0].locked);
+    CHECK(accounts[0].failedAttempts == 0);
+    CHECK(accounts[0].balance == 300.0);
+}
+
