@@ -370,3 +370,59 @@ TEST(Admin_StatusChangesAreAuditLogged) {
     CHECK(contains(log, "actor=ADMIN"));
 }
 
+// ----- Error handling ------------------------------------------------------
+
+TEST(Admin_UnknownAccountChangesNothing) {
+    AdminTestScope scope;
+    addAccount("300101", "Asha Rao");
+
+    std::string out = runManageStatus("999999\n1\n");
+
+    CHECK(contains(out, "Account not found."));
+    CHECK(!accounts[0].frozen);
+    std::ifstream file(ACCOUNT_FILE);
+    CHECK(!file.is_open());
+}
+
+TEST(Admin_InvalidActionChangesNothing) {
+    AdminTestScope scope;
+    addAccount("300101", "Asha Rao");
+
+    std::string out = runManageStatus("300101\n9\n");
+
+    CHECK(contains(out, "Invalid action."));
+    CHECK(!accounts[0].frozen);
+    CHECK(!accounts[0].closed);
+    CHECK(!accounts[0].deleted);
+    std::ifstream file(ACCOUNT_FILE);
+    CHECK(!file.is_open());
+}
+
+TEST(Admin_NonNumericActionChangesNothing) {
+    AdminTestScope scope;
+    addAccount("300101", "Asha Rao");
+
+    std::string out = runManageStatus("300101\nabc\n");
+
+    CHECK(contains(out, "Invalid input."));
+    CHECK(!accounts[0].frozen);
+    CHECK(!accounts[0].closed);
+    CHECK(!accounts[0].deleted);
+}
+
+TEST(Admin_StatusChangeIsRolledBackWhenSaveFails) {
+    AdminTestScope scope;
+    addAccount("300101", "Asha Rao", 100.0);
+
+    // A directory with the temporary file's name makes saveAccounts() fail.
+    std::error_code error;
+    std::filesystem::create_directory(ACCOUNT_FILE + ".tmp", error);
+    CHECK(!error);
+
+    std::string out = runManageStatus("300101\n1\n");
+
+    CHECK(contains(out, "Could not save status change."));
+    CHECK(!contains(out, "Account status updated."));
+    CHECK(!accounts[0].frozen);
+}
+
