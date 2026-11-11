@@ -60,19 +60,68 @@ On Windows using the MSYS2 UCRT64 terminal:
 
 If compilation produces an executable with a different name, use that name when running the program.
 
+
 ## Project Structure
 
 ```text
 Bank-Management-System/
-├── .github/
-│   └── workflows/
-│       └── blank.yml
-├── main.cpp
-├── README.md
-└── .gitignore
+|
+|-- .github/
+|   `-- workflows/
+|       `-- bank.yml
+|
+|-- Sprint2/
+|   |-- include/
+|   |   |-- admin.h
+|   |   |-- audit.h
+|   |   |-- auth.h
+|   |   |-- models.h
+|   |   |-- reports.h
+|   |   |-- security.h
+|   |   `-- storage.h
+|   |
+|   |-- src/
+|   |   |-- admin.cpp
+|   |   |-- audit.cpp
+|   |   |-- auth.cpp
+|   |   |-- main.cpp
+|   |   |-- reports.cpp
+|   |   |-- security.cpp
+|   |   `-- storage.cpp
+|   |
+|   |-- tests/
+|   |   |-- test_admin.cpp
+|   |   |-- test_audit.cpp
+|   |   |-- test_framework.h
+|   |   |-- test_main.cpp
+|   |   |-- test_reports.cpp
+|   |   |-- test_security.cpp
+|   |   `-- test_storage.cpp
+|   |
+|   |-- ARCHITECTURE.md
+|   |-- CI_CD_GUIDE.md
+|   |-- README.md
+|   |-- SECURITY_NOTES.md
+|   |-- TEAM_ASSIGNMENTS.md
+|   |-- TEST_CASE_MATRIX.md
+|   |-- TEST_FRAMEWORK.md
+|   `-- TEST_PLAN.md
+|
+|-- docs/
+|   `-- admin-test-evidence.md
+|
+|-- tests/
+|   `-- test_smoke.py
+|
+|-- .gitignore
+|-- main.cpp
+`-- README.md
 ```
 
-The repository may contain additional files, including project documentation and supporting files.
+The repository maintains two versions of the application:
+
+- **Sprint 1:** The original console-based implementation in the root `main.cpp`.
+- **Sprint 2:** The modular implementation under `Sprint2/`, with separate authentication, security, administration, storage, audit, and reporting modules.
 
 ## Development Workflow
 
