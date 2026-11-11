@@ -103,3 +103,51 @@ Sprint planning and task tracking can be managed using Jira, while GitHub is use
 ## Academic Project
 
 This project demonstrates the application of C++ programming, input validation, file handling, version control, collaborative development, and software engineering practices to a basic banking application.
+
+## Sprint 2 – Advanced Banking Features
+
+Sprint 2 extends the original banking application with a modular C++17
+implementation, administrative operations, security improvements, audit
+logging, transaction reports, and automated regression tests.
+
+### Additional Features
+
+- **PIN Security:** Four-digit PIN validation, masked PIN entry, and
+  account lockout after three consecutive incorrect login attempts.
+- **Account Management:** Admin account search, account details,
+  freeze/unfreeze, close/reopen, soft deletion, and account unlocking.
+- **Audit Logging:** Timestamped records of important customer and
+  administrator activities.
+- **Customer Reports:** Mini statements, complete transaction history,
+  account summaries, and statement export.
+- **Persistent Storage:** Account status and transaction information
+  are maintained across application restarts.
+- **Automated Testing:** Regression tests cover administrative operations,
+  security validation, reports, storage, and audit logging.
+
+### Sprint 2 Architecture
+
+The Sprint 2 implementation separates application responsibilities
+into dedicated modules:
+
+| Module | Responsibility |
+|---|---|
+| main.cpp | Application entry point and menu integration |
+| storage.cpp | Account and transaction persistence |
+| auth.cpp | Customer account creation and authentication |
+| security.cpp | PIN masking and input validation |
+| admin.cpp | Administrative account operations |
+| audit.cpp | Timestamped audit logging |
+| reports.cpp | Account and transaction reports |
+
+Shared data structures and interfaces are maintained in the
+corresponding header files under `include/`.
+
+### Build and Run – Sprint 2
+
+Open a terminal in the `Sprint2` directory.
+
+Compile:
+
+```bash
+g++ -std=c++17 -Wall -Wextra -pedantic -Iinclude src/*.cpp -o bank_management_system.exe
