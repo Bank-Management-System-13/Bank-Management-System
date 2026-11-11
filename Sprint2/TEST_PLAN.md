@@ -33,3 +33,43 @@ The following workflows still require manual interaction with the console applic
 - GitHub Actions builds Sprint 1 and the Sprint 2 application.
 - GitHub Actions compiles and runs automated tests in an isolated runtime directory.
 - GitHub Actions generates a gcovr coverage summary for Sprint 2 source files.
+
+## Running Automated Tests Locally
+
+Open the MSYS2 UCRT64 terminal and navigate to the Sprint2 directory.
+
+### 1. Create the test runtime directory
+
+Run: `mkdir -p test-runtime`
+
+### 2. Compile the automated tests
+
+Run from the Sprint2 directory:
+
+`g++ -std=c++17 -Wall -Wextra -pedantic --coverage -Iinclude -Itests tests/test_main.cpp tests/test_audit.cpp tests/test_storage.cpp tests/test_reports.cpp tests/test_security.cpp tests/test_admin.cpp src/audit.cpp src/storage.cpp src/reports.cpp src/security.cpp src/admin.cpp src/auth.cpp -o test-runtime/tests.exe`
+
+### 3. Execute the tests
+
+Run:
+
+`cd test-runtime`
+
+`./tests.exe`
+
+### 4. Understand the results
+
+- PASS indicates that a test completed successfully.
+- FAIL indicates that an assertion or expected condition failed.
+- Passed shows the number of successful tests.
+- Failed shows the number of unsuccessful tests.
+- Total shows the total number of executed tests.
+
+A successful test run should report zero failures.
+
+### 5. Test isolation and coverage
+
+Tests execute in a separate runtime directory to prevent test-generated
+account, transaction, and audit data from modifying normal application data.
+
+Coverage instrumentation is enabled during compilation. GCC gcov can
+be used to inspect source-code coverage.
