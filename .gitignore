@@ -32,3 +32,8 @@ bms.exe
 /Sprint2/account_report.txt
 /Sprint2/transaction_report.txt
 /Sprint2/test-runtime/
+
+# GCC coverage output files
+*.gcov
+*.gcda
+*.gcno
