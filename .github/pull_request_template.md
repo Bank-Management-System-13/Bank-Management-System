@@ -7,3 +7,9 @@ Briefly describe what this pull request changes and why.
 - [ ] Documentation
 - [ ] Tests
 - [ ] Refactor
+
+## Checklist
+- [ ] The code compiles without errors
+- [ ] I tested my changes
+- [ ] I updated the documentation if needed
+- [ ] My commit messages follow the `docs:`, `test:`, `feat:` style
