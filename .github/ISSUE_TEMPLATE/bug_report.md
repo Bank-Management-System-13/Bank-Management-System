@@ -8,9 +8,9 @@ labels: bug
 Describe the bug.
 
 ## Steps to reproduce
-1. 
-2. 
-3.
+1. Go to '...'
+2. Enter '...'
+3. See the error
 
 ## Expected behavior
 What should have happened?
