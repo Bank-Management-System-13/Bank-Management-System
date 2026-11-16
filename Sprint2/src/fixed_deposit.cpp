@@ -5,12 +5,16 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
+#include <cstdio>
 #include <ctime>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
 #include <limits>
 #include <sstream>
+#ifdef _WIN32
+#include <windows.h>
+#endif
 
 const std::string FIXED_DEPOSIT_FILE = "fixed_deposits.txt";
 
@@ -158,10 +162,18 @@ bool saveFixedDeposits(const std::vector<FixedDeposit>& deposits) {
     }
     output.close();
     if (!output) { std::remove(temp.c_str()); return false; }
+#ifdef _WIN32
+    if (!MoveFileExA(temp.c_str(), FIXED_DEPOSIT_FILE.c_str(),
+                     MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) {
+        std::remove(temp.c_str());
+        return false;
+    }
+#else
     if (std::rename(temp.c_str(), FIXED_DEPOSIT_FILE.c_str()) != 0) {
         std::remove(temp.c_str());
         return false;
     }
+#endif
     return true;
 }
 
@@ -287,6 +299,14 @@ void withdrawFixedDeposit(Account& account) {
                    account.accountNumber, "fd_id=" + id + "; reason=policy_not_configured");
         return;
     }
+    if (hasMaturityTransaction(*it)) {
+        it->status = "MATURED";
+        if (!saveFixedDeposits(deposits))
+            std::cout << "FD status update failed. Please retry.\n";
+        else
+            std::cout << "This FD's maturity amount was already credited.\n";
+        return;
+    }
     const double oldBalance = account.balance;
     account.balance += it->maturityAmount;
     if (!saveAccounts()) { account.balance = oldBalance; return; }
@@ -298,9 +318,9 @@ void withdrawFixedDeposit(Account& account) {
     }
     it->status = "MATURED";
     if (!saveFixedDeposits(deposits)) {
-        account.balance = oldBalance;
-        saveAccounts();
-        std::cout << "Could not update FD status; balance restored. Please inspect transaction history before retrying.\n";
+        // The account and uniquely identified ledger credit are already saved.
+        // Leave both intact; a later retry will only repair the FD status.
+        std::cout << "Maturity was credited, but FD status update failed. Please retry.\n";
         return;
     }
     std::cout << "Maturity amount credited: Rs. " << std::fixed << std::setprecision(2)
