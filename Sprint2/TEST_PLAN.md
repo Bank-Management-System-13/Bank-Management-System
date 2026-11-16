@@ -10,6 +10,7 @@ Covered automatically:
 - Account summary totals, transaction-history account filtering, and statement export.
 - PIN, account-number, and customer-name validation.
 - Admin freeze and soft-delete operations.
+- Fixed-deposit compound-interest calculation, input boundaries, identifier generation, persistence, duplicate rejection, and invalid-record handling.
 
 ## Manual regression checks
 
@@ -20,6 +21,7 @@ The following workflows still require manual interaction with the console applic
 - Balance enquiry and logout audit events.
 - Admin search, unfreeze, close, reopen, and login behavior for frozen/closed accounts.
 - Mini statement last-five behavior and interactive reports-menu navigation.
+- FD creation from available balance, customer-specific listing, restart persistence, and maturity crediting; premature withdrawal must be rejected before maturity.
 
 ## Audit logging
 - Automated checks verify the timestamped line format, event name, account number, details, and actor metadata.
@@ -46,7 +48,7 @@ Run: `mkdir -p test-runtime`
 
 Run from the Sprint2 directory:
 
-`g++ -std=c++17 -Wall -Wextra -pedantic --coverage -Iinclude -Itests tests/test_main.cpp tests/test_audit.cpp tests/test_storage.cpp tests/test_reports.cpp tests/test_security.cpp tests/test_admin.cpp src/audit.cpp src/storage.cpp src/reports.cpp src/security.cpp src/admin.cpp src/auth.cpp -o test-runtime/tests.exe`
+`g++ -std=c++17 -Wall -Wextra -pedantic --coverage -Iinclude -Itests tests/test_main.cpp tests/test_audit.cpp tests/test_storage.cpp tests/test_reports.cpp tests/test_security.cpp tests/test_admin.cpp tests/test_fixed_deposit.cpp src/audit.cpp src/storage.cpp src/reports.cpp src/security.cpp src/admin.cpp src/fixed_deposit.cpp src/auth.cpp -o test-runtime/tests.exe`
 
 ### 3. Execute the tests
 
