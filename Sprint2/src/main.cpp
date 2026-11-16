@@ -4,12 +4,15 @@
 #include "auth.h"
 #include "admin.h"
 #include "storage.h"
+#include "fixed_deposit.h"
 
 int main() {
     if (!loadAccounts()) {
         std::cerr << "Error loading account data.\n";
         return 1;
     }
+
+    processMaturedFixedDeposits();
 
     int choice = -1;
 
