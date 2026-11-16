@@ -7,7 +7,7 @@
 - Principal and earned interest are paid together at maturity; no interim payout.
 - Principal is reserved from the customer's available account balance when the FD is opened.
 - The maturity amount is credited once when maturity is processed.
-- FD records are separate from ordinary account and transaction records.
+- FD records are stored separately from ordinary account records; opening and maturity events are also included in the transaction history.
 
 ## Formula
 For principal P, annual rate R as a percentage, and q = durationMonths / 3:
