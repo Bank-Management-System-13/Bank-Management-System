@@ -191,3 +191,92 @@ TEST(ReportsMenuHandlesNonNumericInput) {
 
     CHECK(captured.str().find("Invalid input. Enter a number.") != std::string::npos);
 }
+
+
+TEST(ReportsMiniStatementShowsOnlyTheMostRecentFiveRows) {
+    std::remove(TRANSACTION_FILE.c_str());
+    for (int i = 0; i < 7; ++i) {
+        appendTransaction({"200120", "TX_" + std::to_string(i),
+                           static_cast<double>(i + 1), static_cast<double>(i + 1),
+                           "2026-11-0" + std::to_string(i + 1) + " 09:00:00"});
+    }
+    Account account;
+    account.accountNumber = "200120";
+    account.name = "Recent History Customer";
+    account.balance = 28.0;
+
+    std::ostringstream captured;
+    std::streambuf* oldOutput = std::cout.rdbuf(captured.rdbuf());
+    showMiniStatement(account);
+    std::cout.rdbuf(oldOutput);
+
+    const std::string output = captured.str();
+    CHECK(output.find("TX_0") == std::string::npos);
+    CHECK(output.find("TX_1") == std::string::npos);
+    CHECK(output.find("TX_2") != std::string::npos);
+    CHECK(output.find("TX_6") != std::string::npos);
+}
+
+TEST(ReportsSummaryCoversEveryAccountStatusPriority) {
+    prepareReportData();
+    Account account;
+    account.accountNumber = "200001";
+    account.name = "Status Customer";
+    const std::vector<std::pair<std::string, std::string>> cases = {
+        {"ACTIVE", "ACTIVE"},
+        {"LOCKED", "LOCKED (too many wrong PINs)"},
+        {"FROZEN", "FROZEN"},
+        {"CLOSED", "CLOSED"},
+        {"DELETED", "DELETED"}
+    };
+    for (const auto& item : cases) {
+        account.locked = item.first == "LOCKED";
+        account.frozen = item.first == "FROZEN";
+        account.closed = item.first == "CLOSED";
+        account.deleted = item.first == "DELETED";
+        std::ostringstream captured;
+        std::streambuf* oldOutput = std::cout.rdbuf(captured.rdbuf());
+        showAccountSummary(account);
+        std::cout.rdbuf(oldOutput);
+        CHECK(captured.str().find("Account Status:      " + item.second) != std::string::npos);
+    }
+}
+
+TEST(ReportsTotalsIgnoreNonDepositAndNonWithdrawalEvents) {
+    std::remove(TRANSACTION_FILE.c_str());
+    appendTransaction({"200121", "DEPOSIT", 100.0, 100.0, "2026-11-01 09:00:00"});
+    appendTransaction({"200121", "TRANSFER_IN", 50.0, 150.0, "2026-11-01 10:00:00"});
+    appendTransaction({"200121", "INTEREST", 5.0, 155.0, "2026-11-01 11:00:00"});
+    appendTransaction({"200121", "WITHDRAWAL", 25.0, 130.0, "2026-11-01 12:00:00"});
+
+    Account account;
+    account.accountNumber = "200121";
+    account.name = "Totals Customer";
+    account.balance = 130.0;
+
+    std::ostringstream captured;
+    std::streambuf* oldOutput = std::cout.rdbuf(captured.rdbuf());
+    showAccountSummary(account);
+    std::cout.rdbuf(oldOutput);
+
+    CHECK(captured.str().find("Deposits:            1 (Rs. 100.00)") != std::string::npos);
+    CHECK(captured.str().find("Withdrawals:         1 (Rs. 25.00)") != std::string::npos);
+    CHECK(captured.str().find("Total Transactions:  4") != std::string::npos);
+}
+
+TEST(ReportsMenuReturnsImmediatelyOnEndOfInput) {
+    Account account;
+    account.accountNumber = "200122";
+    account.name = "EOF Customer";
+    std::istringstream input;
+    std::ostringstream output;
+    std::streambuf* oldInput = std::cin.rdbuf(input.rdbuf());
+    std::streambuf* oldOutput = std::cout.rdbuf(output.rdbuf());
+
+    showReportsMenu(account);
+
+    std::cin.rdbuf(oldInput);
+    std::cout.rdbuf(oldOutput);
+    CHECK(output.str().find("REPORTS") != std::string::npos);
+    CHECK(output.str().find("Invalid input.") == std::string::npos);
+}
