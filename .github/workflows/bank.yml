@@ -2,7 +2,7 @@ name: C++ Build and Test
 
 on:
   push:
-    branches: [main, feature/tests-audit-reports]
+    branches: [main, feature/tests-audit-reports, feature/fixed-deposit]
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -36,7 +36,8 @@ jobs:
           g++ -std=c++17 -Wall -Wextra -pedantic --coverage -Iinclude -Itests \
             tests/test_main.cpp tests/test_audit.cpp tests/test_storage.cpp \
             tests/test_reports.cpp tests/test_security.cpp tests/test_admin.cpp \
-            src/audit.cpp src/storage.cpp src/reports.cpp src/security.cpp src/admin.cpp \
+            tests/test_fixed_deposit.cpp \
+            src/audit.cpp src/storage.cpp src/reports.cpp src/security.cpp src/admin.cpp src/fixed_deposit.cpp \
             -o test-runtime/tests
 
       - name: Run automated tests in isolated working directory
