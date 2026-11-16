@@ -3,6 +3,7 @@
 #include "security.h"
 #include "audit.h"
 #include "reports.h"
+#include "fixed_deposit.h"
 #include <iostream>
 #include <iomanip>
 #include <limits>
@@ -83,7 +84,7 @@ void customerMenu(int index) {
     int choice = -1;
     while (choice != 0) {
         Account& a = accounts[static_cast<std::size_t>(index)];
-        std::cout << "\n--- CUSTOMER MENU ---\n1. Balance enquiry\n2. Deposit\n3. Withdraw\n4. Reports\n0. Logout\n";
+        std::cout << "\n--- CUSTOMER MENU ---\n1. Balance enquiry\n2. Deposit\n3. Withdraw\n4. Reports\n5. Fixed deposits\n0. Logout\n";
         if (!readMenuChoice("Choice: ", choice)) return;
         if (choice == 1) {
             std::cout << "Account: " << a.accountNumber << "\nName: " << a.name
@@ -117,6 +118,8 @@ void customerMenu(int index) {
             std::cout << "Transaction successful. New balance: Rs. " << std::fixed << std::setprecision(2) << a.balance << '\n';
         } else if (choice == 4) {
             showReportsMenu(a);
+        } else if (choice == 5) {
+            showFixedDepositMenu(a);
         } else if (choice != 0) std::cout << "Invalid choice.\n";
     }
     writeAudit(accounts[static_cast<std::size_t>(index)].accountNumber, "LOGOUT", accounts[static_cast<std::size_t>(index)].accountNumber, "Customer logged out");
