@@ -2,6 +2,7 @@
 #include "fixed_deposit.h"
 #include <cstdio>
 #include <fstream>
+#include <limits>
 #include <vector>
 
 namespace {
@@ -78,5 +79,24 @@ TEST(FixedDepositSkipsInvalidPersistedRows) {
         out << "\"FD000001\" \"100101\" 1000 7 4 \"2026-01-15\" \"2026-05-15\" 1020.00 \"ACTIVE\"\n";
     }
     CHECK(loadFixedDeposits().empty());
+    clearFdFile();
+}
+
+TEST(FixedDepositRejectsInvalidRecordStatusAndAmount) {
+    clearFdFile();
+    FixedDeposit fd;
+    fd.fdId = "FD000010";
+    fd.accountNumber = "100101";
+    fd.principal = 1000.0;
+    fd.annualInterestRate = 7.0;
+    fd.durationMonths = 3;
+    fd.startDate = "2026-01-15";
+    fd.maturityDate = "2026-04-15";
+    fd.maturityAmount = calculateFdMaturityAmount(1000.0, 7.0, 3);
+    fd.status = "UNKNOWN";
+    CHECK(!createFixedDepositRecord(fd));
+    fd.status = "ACTIVE";
+    fd.maturityAmount = std::numeric_limits<double>::infinity();
+    CHECK(!createFixedDepositRecord(fd));
     clearFdFile();
 }
