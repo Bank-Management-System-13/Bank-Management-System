@@ -33,7 +33,7 @@ The demo admin PIN is `2468`, configured in `src/security.cpp`. Change it before
 
 ## Automated tests
 
-The regression suite is in `tests/`. GitHub Actions compiles and runs the tests in an isolated `test-runtime/` working directory, keeping the application's normal data files separate. The workflow also prints a gcovr coverage summary.
+The regression suite is in `tests/`. GitHub Actions compiles and runs the tests in an isolated `test-runtime/` working directory, keeping the application's normal data files separate. The workflow reports line, function, and branch coverage, excludes compiler-generated exception/unreachable branches, and fails when line or branch coverage drops below 80%. It uploads an HTML coverage report named `sprint2-coverage-report`.
 
 The test executable can be built from this folder on a system with GCC:
 
@@ -42,6 +42,7 @@ mkdir -p test-runtime
 g++ -std=c++17 -Wall -Wextra -pedantic --coverage -Iinclude -Itests \
   tests/test_main.cpp tests/test_audit.cpp tests/test_storage.cpp \
   tests/test_reports.cpp tests/test_security.cpp tests/test_admin.cpp tests/test_fixed_deposit.cpp \
+  tests/test_fixed_deposit_workflows.cpp tests/test_auth.cpp tests/test_storage_edges.cpp \
   src/audit.cpp src/storage.cpp src/reports.cpp src/security.cpp src/admin.cpp src/fixed_deposit.cpp src/auth.cpp \
   -o test-runtime/tests
 (cd test-runtime && ./tests)

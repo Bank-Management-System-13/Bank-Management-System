@@ -3,6 +3,8 @@
 
 #include <cstdio>
 #include <fstream>
+#include <filesystem>
+#include <system_error>
 #include <regex>
 #include <string>
 
@@ -37,4 +39,13 @@ TEST(AuditWriteHelperIncludesActor) {
     CHECK(line.find("actor=CUSTOMER") != std::string::npos);
     CHECK(line.find("LOGIN_SUCCESS") != std::string::npos);
     CHECK(line.find("acct=100002") != std::string::npos);
+}
+
+
+TEST(AuditLogReturnsFalseWhenAuditPathIsNotAFile) {
+    std::error_code ignored;
+    std::filesystem::remove_all("audit.log", ignored);
+    CHECK(std::filesystem::create_directory("audit.log"));
+    CHECK(!logAudit("SHOULD_FAIL", "100099", "path is a directory"));
+    std::filesystem::remove_all("audit.log", ignored);
 }
