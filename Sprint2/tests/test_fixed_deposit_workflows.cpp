@@ -502,7 +502,7 @@ TEST(FixedDepositMenuHandlesInvalidNonNumericAndExitChoices) {
     {
         ConsoleCapture io("not-a-choice\n");
         showFixedDepositMenu(account);
-        CHECK(io.output().find("Invalid input. Enter a number.") != std::string::npos);
+        CHECK(io.output().find("Invalid input. Enter a whole number.") != std::string::npos);
     }
     {
         ConsoleCapture io("0\n");
