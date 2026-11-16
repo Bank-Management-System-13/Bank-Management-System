@@ -142,7 +142,9 @@ std::vector<FixedDeposit> loadFixedDeposits() {
         if (fd.fdId.empty() || fd.accountNumber.empty() ||
             !validFixedDepositTerms(fd.principal, fd.annualInterestRate, fd.durationMonths) ||
             !validDate(fd.startDate) || !validDate(fd.maturityDate) ||
-            fd.maturityAmount < fd.principal ||
+            !std::isfinite(fd.maturityAmount) ||
+            std::abs(fd.maturityAmount - calculateFdMaturityAmount(
+                fd.principal, fd.annualInterestRate, fd.durationMonths)) > 0.005 ||
             (fd.status != "ACTIVE" && fd.status != "MATURED" && fd.status != "CLOSED")) continue;
         result.push_back(fd);
     }
@@ -245,6 +247,18 @@ void createFixedDeposit(Account& account) {
         std::cout << "Could not save FD; account balance was restored.\n";
         return;
     }
+    const Transaction opening{account.accountNumber, "FD_OPEN:" + fd.fdId,
+                               principal, account.balance, auditTimestamp()};
+    if (!appendTransaction(opening)) {
+        deposits.pop_back();
+        const bool fdRestored = saveFixedDeposits(deposits);
+        account.balance = oldBalance;
+        const bool accountRestored = saveAccounts();
+        std::cout << "Could not record FD opening. Creation was "
+                  << ((fdRestored && accountRestored) ? "cancelled." :
+                      "partially rolled back; administrator review is required.") << '\n';
+        return;
+    }
     writeAudit(account.accountNumber, "FD_CREATED", account.accountNumber,
                "fd_id=" + fd.fdId + "; principal=" + std::to_string(principal) +
                "; annual_rate=" + std::to_string(rate));
@@ -289,8 +303,16 @@ void withdrawFixedDeposit(Account& account) {
     auto it = std::find_if(deposits.begin(), deposits.end(), [&](const FixedDeposit& fd) {
         return fd.fdId == id && fd.accountNumber == account.accountNumber;
     });
-    if (it == deposits.end() || it->status != "ACTIVE") {
-        std::cout << "Active FD not found.\n";
+    if (it == deposits.end()) {
+        std::cout << "FD not found for this account.\n";
+        return;
+    }
+    if (it->status == "MATURED") {
+        std::cout << "This FD is already matured and credited.\n";
+        return;
+    }
+    if (it->status != "ACTIVE") {
+        std::cout << "This FD is not active.\n";
         return;
     }
     if (today() < it->maturityDate) {
