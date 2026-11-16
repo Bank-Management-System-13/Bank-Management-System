@@ -8,6 +8,8 @@
 #include <iostream>
 #include <sstream>
 #include <string>
+#include <utility>
+#include <vector>
 
 namespace {
 void prepareReportData() {
