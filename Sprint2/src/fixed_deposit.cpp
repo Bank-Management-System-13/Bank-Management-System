@@ -72,13 +72,25 @@ bool readInteger(const std::string& prompt, int& value) {
     return false;
 }
 
+bool hasMaturityTransaction(const FixedDeposit& fd) {
+    const auto transactions = loadTransactions();
+    const std::string eventType = "FD_MATURITY_CREDIT:" + fd.fdId;
+    return std::any_of(transactions.begin(), transactions.end(), [&](const Transaction& tx) {
+        return tx.accountNumber == fd.accountNumber && tx.type == eventType;
+    });
+}
+
 bool recordMaturity(const FixedDeposit& fd, const Account& account) {
-    const Transaction tx{account.accountNumber, "FD_MATURITY_CREDIT",
+    // The FD ID in the transaction type makes the maturity credit idempotent
+    // when an FD status-file save fails after the account and ledger are saved.
+    if (hasMaturityTransaction(fd)) return true;
+    const Transaction tx{account.accountNumber, "FD_MATURITY_CREDIT:" + fd.fdId,
                          fd.maturityAmount, account.balance, auditTimestamp()};
     if (!appendTransaction(tx)) return false;
-    return writeAudit(account.accountNumber, "FD_MATURITY_CREDIT",
-                      account.accountNumber,
-                      "fd_id=" + fd.fdId + "; amount=" + std::to_string(fd.maturityAmount));
+    writeAudit(account.accountNumber, "FD_MATURITY_CREDIT",
+               account.accountNumber,
+               "fd_id=" + fd.fdId + "; amount=" + std::to_string(fd.maturityAmount));
+    return true;
 }
 
 void printFd(const FixedDeposit& fd) {
@@ -181,12 +193,11 @@ void createFixedDeposit(Account& account) {
         std::cout << "This account cannot create an FD.\n";
         return;
     }
-    double principal = 0.0;
-    int annualRateInput = 0, months = 0;
+    double principal = 0.0, rate = 0.0;
+    int months = 0;
     if (!readPositiveAmount("FD principal (minimum Rs. 1000): Rs. ", principal)) return;
-    if (!readInteger("Annual interest rate in percent (e.g. 7): ", annualRateInput)) return;
+    if (!readPositiveAmount("Annual interest rate in percent (e.g. 7): ", rate)) return;
     if (!readInteger("Tenure in months (3-120, multiple of 3): ", months)) return;
-    const double rate = static_cast<double>(annualRateInput);
     if (!validFixedDepositTerms(principal, rate, months)) {
         std::cout << "Invalid FD terms. Principal >= Rs. 1000, rate > 0 and <= 100, tenure 3-120 months in multiples of 3.\n";
         return;
@@ -241,12 +252,11 @@ void viewFixedDeposits(const Account& account) {
 }
 
 void calculateFixedDepositReturns() {
-    double principal = 0.0;
-    int rateInput = 0, months = 0;
+    double principal = 0.0, rate = 0.0;
+    int months = 0;
     if (!readPositiveAmount("Principal amount: Rs. ", principal)) return;
-    if (!readInteger("Annual interest rate in percent: ", rateInput)) return;
+    if (!readPositiveAmount("Annual interest rate in percent: ", rate)) return;
     if (!readInteger("Tenure in months (multiple of 3): ", months)) return;
-    const double rate = static_cast<double>(rateInput);
     if (!validFixedDepositTerms(principal, rate, months)) {
         std::cout << "Invalid FD terms. Check principal, rate and tenure.\n";
         return;
@@ -306,6 +316,11 @@ void processMaturedFixedDeposits() {
         if (index < 0) continue;
         Account& account = accounts[static_cast<std::size_t>(index)];
         if (account.frozen || account.closed || account.deleted) continue;
+        if (hasMaturityTransaction(fd)) {
+            fd.status = "MATURED";
+            changed = true;
+            continue;
+        }
         const double oldBalance = account.balance;
         account.balance += fd.maturityAmount;
         if (!saveAccounts()) { account.balance = oldBalance; continue; }
