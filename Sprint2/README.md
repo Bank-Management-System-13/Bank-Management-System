@@ -20,6 +20,7 @@ Run on Windows: `bank_management_system.exe`
 - `include/audit.h`, `src/audit.cpp`: timestamped audit trail in `audit.log`.
 - `include/admin.h`, `src/admin.cpp`: account search/view and freeze/unfreeze/close/reopen/soft-delete/unlock.
 - `include/reports.h`, `src/reports.cpp`: account and transaction report generation.
+- `include/fixed_deposit.h`, `src/fixed_deposit.cpp`: fixed deposits with annual interest rates, quarterly compounding, maturity crediting, and customer FD reports.
 - `src/main.cpp`: menu and module integration.
 
 ## Admin PIN
@@ -28,7 +29,7 @@ The demo admin PIN is `2468`, configured in `src/security.cpp`. Change it before
 
 ## Generated files
 
-`accounts.txt`, `transactions.txt`, and `audit.log` are created in the current working directory. Exporting a customer statement creates `statement_<account number>.txt`.
+`accounts.txt`, `transactions.txt`, `audit.log`, and `fixed_deposits.txt` are created in the current working directory. Exporting a customer statement creates `statement_<account number>.txt`.
 
 ## Automated tests
 
@@ -40,8 +41,12 @@ The test executable can be built from this folder on a system with GCC:
 mkdir -p test-runtime
 g++ -std=c++17 -Wall -Wextra -pedantic --coverage -Iinclude -Itests \
   tests/test_main.cpp tests/test_audit.cpp tests/test_storage.cpp \
-  tests/test_reports.cpp tests/test_security.cpp tests/test_admin.cpp \
-  src/audit.cpp src/storage.cpp src/reports.cpp src/security.cpp src/admin.cpp src/auth.cpp \
+  tests/test_reports.cpp tests/test_security.cpp tests/test_admin.cpp tests/test_fixed_deposit.cpp \
+  src/audit.cpp src/storage.cpp src/reports.cpp src/security.cpp src/admin.cpp src/fixed_deposit.cpp src/auth.cpp \
   -o test-runtime/tests
 (cd test-runtime && ./tests)
 ```
+
+## Fixed Deposits
+
+Customers can create and view fixed deposits, preview returns, and receive a maturity credit. Rates are annual percentages and compounding is quarterly. This release supports 3–120 month tenures in whole-quarter increments, with principal plus interest paid at maturity. See [FIXED_DEPOSIT_DESIGN.md](FIXED_DEPOSIT_DESIGN.md) for the formula, data format, and current limitations.
