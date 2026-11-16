@@ -5,7 +5,6 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
-#include <cstdio>
 #include <ctime>
 #include <fstream>
 #include <iomanip>
@@ -107,6 +106,12 @@ void printFd(const FixedDeposit& fd) {
               << " | Maturity date: " << fd.maturityDate
               << " | Status: " << fd.status << '\n';
 }
+}
+
+std::string calculateFdMaturityDate(const std::string& startDate, int durationMonths) {
+    if (!validDate(startDate) || durationMonths < 3 ||
+        durationMonths > 120 || durationMonths % 3 != 0) return {};
+    return addMonths(startDate, durationMonths);
 }
 
 bool validFixedDepositTerms(double principal, double annualRate, int durationMonths) {
@@ -234,7 +239,7 @@ void createFixedDeposit(Account& account) {
     fd.annualInterestRate = rate;
     fd.durationMonths = months;
     fd.startDate = today();
-    fd.maturityDate = addMonths(fd.startDate, months);
+    fd.maturityDate = calculateFdMaturityDate(fd.startDate, months);
     fd.maturityAmount = calculateFdMaturityAmount(principal, rate, months);
 
     const double oldBalance = account.balance;
