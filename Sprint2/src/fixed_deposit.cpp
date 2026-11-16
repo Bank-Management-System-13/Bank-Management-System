@@ -192,10 +192,14 @@ std::string nextFixedDepositId(const std::vector<FixedDeposit>& deposits) {
 }
 
 bool createFixedDepositRecord(const FixedDeposit& fd) {
-    if (!validFixedDepositTerms(fd.principal, fd.annualInterestRate, fd.durationMonths) ||
+    if (fd.fdId.empty() || fd.accountNumber.empty() ||
+        !validFixedDepositTerms(fd.principal, fd.annualInterestRate, fd.durationMonths) ||
         !validDate(fd.startDate) || !validDate(fd.maturityDate) ||
-        fd.maturityAmount != calculateFdMaturityAmount(fd.principal, fd.annualInterestRate,
-                                                       fd.durationMonths)) return false;
+        !std::isfinite(fd.maturityAmount) ||
+        std::abs(fd.maturityAmount - calculateFdMaturityAmount(
+            fd.principal, fd.annualInterestRate, fd.durationMonths)) > 0.005 ||
+        (fd.status != "ACTIVE" && fd.status != "MATURED" && fd.status != "CLOSED"))
+        return false;
     auto deposits = loadFixedDeposits();
     for (const auto& old : deposits) if (old.fdId == fd.fdId) return false;
     deposits.push_back(fd);
