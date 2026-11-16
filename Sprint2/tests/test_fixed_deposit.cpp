@@ -12,8 +12,8 @@ void clearFdFile() {
 }
 
 TEST(FixedDepositCalculatesQuarterlyCompoundReturns) {
-    CHECK(calculateFdMaturityAmount(50000.0, 7.0, 24) == 57425.92);
-    CHECK(calculateFdInterest(50000.0, 7.0, 24) == 7425.92);
+    CHECK(calculateFdMaturityAmount(50000.0, 7.0, 24) == 57444.09);
+    CHECK(calculateFdInterest(50000.0, 7.0, 24) == 7444.09);
 }
 TEST(FixedDepositRejectsInvalidTerms) {
     CHECK(!validFixedDepositTerms(999.0, 7.0, 12));
