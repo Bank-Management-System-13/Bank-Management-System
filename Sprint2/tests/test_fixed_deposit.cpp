@@ -43,7 +43,7 @@ TEST(FixedDepositPersistsAndReloadsRecord) {
     fd.durationMonths = 24;
     fd.startDate = "2026-01-15";
     fd.maturityDate = "2028-01-15";
-    fd.maturityAmount = 57425.92;
+    fd.maturityAmount = 57444.09;
     fd.status = "ACTIVE";
     CHECK(createFixedDepositRecord(fd));
     const auto loaded = loadFixedDeposits();
