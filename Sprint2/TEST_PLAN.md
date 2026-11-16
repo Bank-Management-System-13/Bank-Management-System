@@ -37,7 +37,7 @@ The following workflows still require manual interaction with the console applic
 ## Integration and CI
 - GitHub Actions builds Sprint 1 and the Sprint 2 application.
 - GitHub Actions compiles and runs automated tests in an isolated runtime directory.
-- GitHub Actions generates a gcovr summary with line, function, and branch coverage for Sprint 2 source files and uploads an HTML details report as the `sprint2-coverage-report` artifact.
+- GitHub Actions generates line, function, and branch coverage with gcovr. The job excludes compiler-generated exception and unreachable branches, and enforces minimum 80% line coverage and 80% branch coverage. The HTML details report is uploaded as the `sprint2-coverage-report` artifact.
 
 ## Running Automated Tests Locally
 
