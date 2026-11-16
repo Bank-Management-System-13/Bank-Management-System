@@ -49,11 +49,11 @@ jobs:
       - name: Generate coverage summary
         run: |
           cd Sprint2
-          gcovr --root . --filter 'src/.*' --html-details coverage.html --print-summary
+          gcovr --root . --filter 'src/.*' --exclude-throw-branches --exclude-unreachable-branches --decisions --html-details coverage.html --print-summary --fail-under-line 80 --fail-under-decision 80
 
       - name: Upload detailed coverage report
         uses: actions/upload-artifact@v4
         with:
           name: sprint2-coverage-report
-          path: Sprint2/coverage.html
+          path: Sprint2/coverage*
           if-no-files-found: error
